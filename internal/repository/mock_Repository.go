@@ -15,14 +15,16 @@ type MockRepository struct {
 }
 
 // GetUserByEmail provides a mock function with given fields: ctx, email
-func (_m *MockRepository) GetUserByEmail(ctx context.Context, email string) (entity.User, error) {
+func (_m *MockRepository) GetUserByEmail(ctx context.Context, email string) (*entity.User, error) {
 	ret := _m.Called(ctx, email)
 
-	var r0 entity.User
-	if rf, ok := ret.Get(0).(func(context.Context, string) entity.User); ok {
+	var r0 *entity.User
+	if rf, ok := ret.Get(0).(func(context.Context, string) *entity.User); ok {
 		r0 = rf(ctx, email)
 	} else {
-		r0 = ret.Get(0).(entity.User)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*entity.User)
+		}
 	}
 
 	var r1 error

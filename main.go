@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 
 	"github.com/disturb/max-inventory/database"
 	"github.com/disturb/max-inventory/internal/repository"
@@ -22,18 +21,20 @@ func main() {
 		),
 
 		fx.Invoke(
-			func(ctx context.Context, svc service.Service) {
-				err := svc.RegisterUser(ctx, "joe2@email.com", "Joe", "password2")
+			func(ctx context.Context, serv service.Service) {
+				err := serv.RegisterUser(ctx, "my@email.com", "myname", "mypassword")
 				if err != nil {
 					panic(err)
 				}
 
-				u, err := svc.LoginUser(ctx, "joe2@email.com", "password2")
+				u, err := serv.LoginUser(ctx, "my@email.com", "mypassword")
 				if err != nil {
 					panic(err)
 				}
 
-				log.Println(u)
+				if u.Name != "myname" {
+					panic("wrong name")
+				}
 			},
 		),
 	)

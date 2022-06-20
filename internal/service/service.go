@@ -7,7 +7,7 @@ import (
 	"github.com/disturb/max-inventory/internal/repository"
 )
 
-// Service is the business logic implementation
+// Service is the business logic of the application.
 //
 //go:generate mockery --name=Service --output=service --inpackage
 type Service interface {
@@ -15,10 +15,12 @@ type Service interface {
 	LoginUser(ctx context.Context, email, password string) (*models.User, error)
 }
 
-type service struct {
+type serv struct {
 	repo repository.Repository
 }
 
 func New(repo repository.Repository) Service {
-	return &service{repo: repo}
+	return &serv{
+		repo: repo,
+	}
 }

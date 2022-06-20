@@ -1,23 +1,27 @@
 package service
 
 import (
-	context "context"
-	"database/sql"
-	"encoding/base64"
+	"context"
 	"os"
 	"testing"
 
 	"github.com/disturb/max-inventory/encryption"
 	"github.com/disturb/max-inventory/internal/entity"
 	"github.com/disturb/max-inventory/internal/repository"
-	mock "github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/mock"
 )
 
-var s Service
 var repo *repository.MockRepository
+var s Service
 
 func TestMain(m *testing.M) {
+	validPassword, _ := encryption.Encrypt([]byte("validPassword"))
+	encryptedPassword := encryption.ToBase64(validPassword)
+	u := &entity.User{Email: "test@exists.com", Password: encryptedPassword}
+
 	repo = &repository.MockRepository{}
+	repo.On("GetUserByEmail", mock.Anything, "test@test.com").Return(nil, nil)
+	repo.On("GetUserByEmail", mock.Anything, "test@exists.com").Return(u, nil)
 	repo.On("SaveUser", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	s = New(repo)
@@ -30,14 +34,23 @@ func TestRegisterUser(t *testing.T) {
 	testCases := []struct {
 		Name          string
 		Email         string
+		UserName      string
 		Password      string
 		ExpectedError error
 	}{
 		{
-			Name:          "Register valid user",
+			Name:          "RegisterUser_Success",
 			Email:         "test@test.com",
-			Password:      "testpassword",
+			UserName:      "test",
+			Password:      "validPassword",
 			ExpectedError: nil,
+		},
+		{
+			Name:          "RegisterUser_UserAlreadyExists",
+			Email:         "test@exists.com",
+			UserName:      "test",
+			Password:      "validPassword",
+			ExpectedError: ErrUserAlreadyExists,
 		},
 	}
 
@@ -48,13 +61,14 @@ func TestRegisterUser(t *testing.T) {
 
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-
 			repo.Mock.Test(t)
 
-			err := s.RegisterUser(ctx, tc.Email, tc.Name, tc.Password)
+			err := s.RegisterUser(ctx, tc.Email, tc.UserName, tc.Password)
+
 			if err != tc.ExpectedError {
 				t.Errorf("Expected error %v, got %v", tc.ExpectedError, err)
 			}
+
 		})
 	}
 }
@@ -67,43 +81,34 @@ func TestLoginUser(t *testing.T) {
 		ExpectedError error
 	}{
 		{
-			Name:          "Invalid Password Credential",
-			Email:         "test@test.com",
-			Password:      "invalidpassword",
-			ExpectedError: ErrInvalidCredentials,
-		},
-		{
-			Name:          "Invalid Email Credential",
-			Email:         "invalidemail",
-			Password:      "invalidpassword",
-			ExpectedError: ErrInvalidCredentials,
-		},
-		{
-			Name:          "Valid Credentials",
-			Email:         "test@test.com",
-			Password:      "validpassword",
+			Name:          "LoginUser_Success",
+			Email:         "test@exists.com",
+			Password:      "validPassword",
 			ExpectedError: nil,
+		},
+		{
+			Name:          "LoginUser_InvalidPassword",
+			Email:         "test@exists.com",
+			Password:      "invalidPassword",
+			ExpectedError: ErrInvalidCredentials,
 		},
 	}
 
 	ctx := context.Background()
-	pass, _ := encryption.Encrypt([]byte("validpassword"))
-	passwordBased64 := base64.RawStdEncoding.EncodeToString(pass)
-	repo.On("GetUserByEmail", mock.Anything, "test@test.com").Return(entity.User{Password: passwordBased64}, nil)
-	repo.On("GetUserByEmail", mock.Anything, "invalidemail").Return(entity.User{}, sql.ErrNoRows)
 
 	for i := range testCases {
 		tc := testCases[i]
 
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-
 			repo.Mock.Test(t)
 
-			_, err := s.LoginUser(ctx, tc.Email, tc.Password)
-			if err != tc.ExpectedError {
-				t.Errorf("Expected error %v, got %v", tc.ExpectedError, err)
+			_, errr := s.LoginUser(ctx, tc.Email, tc.Password)
+
+			if errr != tc.ExpectedError {
+				t.Errorf("Expected error %v, got %v", tc.ExpectedError, errr)
 			}
+
 		})
 	}
 }

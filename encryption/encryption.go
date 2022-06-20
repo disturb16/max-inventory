@@ -9,7 +9,7 @@ import (
 	"io"
 )
 
-const key string = "01234567890123456789012345678901"
+const key = "01234567890123456789012345678901"
 
 func Encrypt(plaintext []byte) ([]byte, error) {
 	c, err := aes.NewCipher([]byte(key))
@@ -50,16 +50,10 @@ func Decrypt(ciphertext []byte) ([]byte, error) {
 	return gcm.Open(nil, nonce, ciphertext, nil)
 }
 
-func Decode(ciphertext string) (string, error) {
-	bb, err := base64.RawStdEncoding.DecodeString(ciphertext)
-	if err != nil {
-		return "", err
-	}
+func ToBase64(plaintext []byte) string {
+	return base64.RawStdEncoding.EncodeToString(plaintext)
+}
 
-	decrypted, err := Decrypt(bb)
-	if err != nil {
-		return "", err
-	}
-
-	return string(decrypted), nil
+func FromBase64(ciphertext string) ([]byte, error) {
+	return base64.RawStdEncoding.DecodeString(ciphertext)
 }

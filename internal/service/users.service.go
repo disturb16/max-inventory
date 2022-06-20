@@ -2,46 +2,52 @@ package service
 
 import (
 	"context"
-	"database/sql"
-	"encoding/base64"
 	"errors"
 
 	"github.com/disturb/max-inventory/encryption"
 	"github.com/disturb/max-inventory/internal/models"
 )
 
-var ErrInvalidCredentials = errors.New("invalid credentials")
+var (
+	ErrUserAlreadyExists  = errors.New("user already exists")
+	ErrInvalidCredentials = errors.New("invalid credentials")
+)
 
-func (s *service) RegisterUser(ctx context.Context, email, name, password string) error {
-	pass, err := encryption.Encrypt([]byte(password))
+func (s *serv) RegisterUser(ctx context.Context, email, name, password string) error {
+
+	u, _ := s.repo.GetUserByEmail(ctx, email)
+	if u != nil {
+		return ErrUserAlreadyExists
+	}
+
+	bb, err := encryption.Encrypt([]byte(password))
 	if err != nil {
 		return err
 	}
 
-	return s.repo.SaveUser(ctx, email, name, base64.RawStdEncoding.EncodeToString(pass))
+	pass := encryption.ToBase64(bb)
+	return s.repo.SaveUser(ctx, email, name, pass)
 }
 
-func (s *service) LoginUser(ctx context.Context, email, password string) (*models.User, error) {
-
+func (s *serv) LoginUser(ctx context.Context, email, password string) (*models.User, error) {
 	u, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, ErrInvalidCredentials
-		}
-
 		return nil, err
 	}
 
-	pass, err := encryption.Decode(u.Password)
+	bb, err := encryption.FromBase64(u.Password)
 	if err != nil {
 		return nil, err
 	}
 
-	if string(pass) != password {
-		return nil, ErrInvalidCredentials
+	decryptedPassword, err := encryption.Decrypt(bb)
+	if err != nil {
+		return nil, err
 	}
 
-	//TODO: return JWT token
+	if string(decryptedPassword) != password {
+		return nil, ErrInvalidCredentials
+	}
 
 	return &models.User{
 		ID:    u.ID,
