@@ -11,6 +11,8 @@ import (
 var (
 	ErrUserAlreadyExists  = errors.New("user already exists")
 	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrRoleAlreadyAdded   = errors.New("role was already added for this user")
+	ErrRoleNotFound       = errors.New("role not found")
 )
 
 func (s *serv) RegisterUser(ctx context.Context, email, name, password string) error {
@@ -54,4 +56,41 @@ func (s *serv) LoginUser(ctx context.Context, email, password string) (*models.U
 		Email: u.Email,
 		Name:  u.Name,
 	}, nil
+}
+
+func (s *serv) AddUserRole(ctx context.Context, userID, roleID int64) error {
+
+	roles, err := s.repo.GetUserRoles(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	for _, r := range roles {
+		if r.RoleID == roleID {
+			return ErrRoleAlreadyAdded
+		}
+	}
+
+	return s.repo.SaveUserRole(ctx, userID, roleID)
+}
+
+func (s *serv) RemoveUserRole(ctx context.Context, userID, roleID int64) error {
+	roles, err := s.repo.GetUserRoles(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	roleFound := false
+	for _, r := range roles {
+		if r.RoleID == roleID {
+			roleFound = true
+			break
+		}
+	}
+
+	if !roleFound {
+		return ErrRoleNotFound
+	}
+
+	return s.repo.RemoveUserRole(ctx, userID, roleID)
 }

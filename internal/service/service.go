@@ -13,6 +13,8 @@ import (
 type Service interface {
 	RegisterUser(ctx context.Context, email, name, password string) error
 	LoginUser(ctx context.Context, email, password string) (*models.User, error)
+	AddUserRole(ctx context.Context, userID, roleID int64) error
+	RemoveUserRole(ctx context.Context, userID, roleID int64) error
 }
 
 type serv struct {
